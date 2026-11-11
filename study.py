@@ -124,6 +124,12 @@ def sample_trials(df, rng=None):
             "summary": r.summary,
             "label": r.label,
             "is_catch": False,
+            # AI output, only present when sampling from the predictions file
+            **(
+                {"ai_verdict": r.model_verdict, "ai_span": _span(r.model_flagged_span)}
+                if "model_verdict" in r
+                else {}
+            ),
         }
         for r in picked
     ]
@@ -133,5 +139,44 @@ def sample_trials(df, rng=None):
     return trials
 
 
+def _span(value):
+    return value if isinstance(value, str) and value.strip() else None
+
+
 def should_terminate(catch_correct, quiz_attempts):
     return (not catch_correct) and quiz_attempts > MAX_QUIZ_ATTEMPTS_TOLERATED
+
+
+# ---------------------------------------------------------------- AI condition
+# Asynchronous AI assistance: the Gemini 3.5 Flash-Lite outputs saved in
+# Assignment 2. Rows are identical to study_dataset.csv, so sampling with the
+# same rules gives the same trial distribution as the baseline.
+
+AI_CONDITION = "ai"
+AI_COLLECTION = "ai_sessions"
+AI_DATASET_PATH = "study_dataset_with_predictions.csv"
+
+# What the AI "says" on the hand-written catch trial (correct, for consistency;
+# the catch trial is scored on the participant's answer before the AI is shown).
+CATCH_AI_OUTPUT = {
+    "ai_verdict": HALLUCINATED,
+    "ai_span": "open every day of the week and is best known for its chocolate croissants",
+}
+
+# Post-study survey, 1-7 agreement scale.
+LIKERT = list(range(1, 8))
+SURVEY = [
+    {"key": "trust", "statement": "I trusted the AI's suggestions."},
+    {
+        "key": "highlights_helpful",
+        "statement": "The highlighted phrases helped me find problems in the summaries.",
+    },
+    {
+        "key": "self_reported_reliance",
+        "statement": "I changed my answer based on the AI when I wasn't sure.",
+    },
+]
+
+
+def load_ai_dataset(path=AI_DATASET_PATH):
+    return pd.read_csv(path)

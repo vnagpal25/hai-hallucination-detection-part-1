@@ -3,3 +3,5 @@ __pycache__/
 .streamlit/secrets.toml
 .local_sessions.json
 baseline_responses.csv
+.local_*.json
+ai_responses.csv

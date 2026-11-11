@@ -10,8 +10,14 @@ from pathlib import Path
 
 import streamlit as st
 
-COLLECTION = "baseline_sessions"
+COLLECTION = "baseline_sessions"  # default; the AI condition passes "ai_sessions"
 LOCAL_PATH = Path(__file__).parent / ".local_sessions.json"
+
+
+def local_path(collection=COLLECTION):
+    if collection == COLLECTION:
+        return LOCAL_PATH
+    return Path(__file__).parent / f".local_{collection}.json"
 
 
 def using_firestore():
@@ -33,24 +39,25 @@ def _client():
     return firestore.Client(credentials=creds, project=creds.project_id)
 
 
-def _read_local():
-    return json.loads(LOCAL_PATH.read_text()) if LOCAL_PATH.exists() else {}
+def _read_local(collection=COLLECTION):
+    path = local_path(collection)
+    return json.loads(path.read_text()) if path.exists() else {}
 
 
-def save(code, session):
+def save(code, session, collection=COLLECTION):
     """Store one participant's session in a document named after their code."""
     doc = {**session, "code": code, "saved_at": datetime.now(timezone.utc)}
     if using_firestore():
-        _client().collection(COLLECTION).document(code).set(doc)
+        _client().collection(collection).document(code).set(doc)
     else:
-        data = _read_local()
+        data = _read_local(collection)
         data[code] = doc
-        LOCAL_PATH.write_text(json.dumps(data, indent=2, default=str))
+        local_path(collection).write_text(json.dumps(data, indent=2, default=str))
 
 
-def load(code):
+def load(code, collection=COLLECTION):
     """Return the stored session for a code, or None if it doesn't exist."""
     if using_firestore():
-        doc = _client().collection(COLLECTION).document(code).get()
+        doc = _client().collection(collection).document(code).get()
         return doc.to_dict() if doc.exists else None
-    return _read_local().get(code)
+    return _read_local(collection).get(code)
